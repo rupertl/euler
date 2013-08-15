@@ -1,0 +1,6 @@
+*.d
+*.o
+*~
+TAGS
+/cppcheck.xml
+euler
