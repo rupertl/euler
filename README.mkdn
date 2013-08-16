@@ -1,0 +1,246 @@
+# euler
+
+### A C++11/R framework for running, testing and comparing Project Euler solutions
+
+# Synopsis
+
+    $ ./euler --problem 1
+    Problem: 1 solution: brute_force input: 1000 answer: 233168 time: 8000ns
+    Problem: 1 solution: closed_form input: 1000 answer: 233168 time: 1000ns
+
+    $ ./euler --problem 1 --solution brute
+    Problem: 1 solution: brute_force input: 1000 answer: 233168 time: 8000ns
+
+    $ ./euler --problem 1 --runs 10000 \
+      --input 10,20,50,100,200,500,1000,2000,5000,10000 --csv > 001/output.csv
+    $ plot/plot.R 001/001.png < 001/output.csv 
+
+![Sample Plot](001/001.png)
+
+# Description
+
+euler is a simple C++11 framework for experimenting with [Project Euler](http://projecteuler.net/) problems. 
+
+## Features
+
+- Allows you to write and run solutions with a minimum of configuration
+- Compare timing and output from each solution for a problem
+- Choose the input for each solution or use the default
+- Run a solution multiple times to ensure accurate timings
+- Plot time vs input for each solution to see how your solutions perform
+
+# Installation
+
+You will need a recent C++ compiler that can understand C++11 - I've
+tested this with gcc 4.7.2 and clang 3.4 on Ubuntu 12.10 but this
+should work on other platforms. You will also need GNU make.
+
+In order to produce the plots you will need the R programming language
+environment installed with the lattice graph plotting library. If you
+don't have R this is not needed to run the main program.
+
+Run make to compile. See Command Line Options below for details on how
+to run the program.
+
+# Adding solutions
+
+This code is intended to be extended as you solve more problems. Each
+solution is linked into the main euler executable. Functions
+implementing solutions are statically registered at run time so you
+don't need to create and include a header file for each.
+
+See the files in 001 for a sample and follow the procedure below.
+
+- Create a directory for the problem, eg 002
+- Add a .cpp file containing the solution.
+- The function to be called should have the form `EulerIntType foo(EulerIntType input)`. 
+- `EulerIntType` is defined as `long long`.
+- Add a line like the following to the file
+
+```
+static bool registered =
+        EulerRegistry::register_solution({problem_id, "solution name",
+                                          function, default_input}); `
+```
+
+- Update the Makefile units sections.
+- Compile and run.
+
+Note - as per the notice on the Project Euler website, please don't
+post your solutions publically eg on github so as not to spoil the
+enjoyment of other people trying to solve them. I've included problem
+1 only just to illustrate how the framework operates.
+
+# Command Line Options
+
+## euler executable
+
+`--problem P`
+
+Select problem P to find solutions for and run. If this is not
+specified, all problems will be selected.
+
+`--solution S`
+
+Select solution S to run. The solution name can be abbreviated. If
+this is not selected, all solutions for the selected problem(s) will
+be run.
+
+`--runs R`
+
+Run each solution R times. Default is 1. Set this to around 10000 to
+get more accurate timing data. Note that timing data is wall clock
+time, not CPU time.
+
+`--input I1[,I2,I3...]`
+
+Specify the input to the solutions being run. Default is the default
+valuse set in the problem registration. If you want to run with more
+than one input, separate the values with commas and do not include
+whitespace.
+
+`--csv`
+
+Output results in CSV format, suitable for passing into the plotting
+functions.
+
+## plot.R
+
+`plot/plot.R [PNG_FILE] < INPUT_CSV`
+
+If PNG_FILE is not specified it will output the plot to "euler.png" in
+the current directory. Use any image viewer to look at the file.
+
+# Support and Development
+
+Bugs and requested issues can be reported at Github. Pull requests are
+also very welcome; please try to follow the existing style and
+organisation of the module.
+
+https://github.com/rupertl/euler/
+
+# C++11
+
+I'm really enjoying programming in C++11 - there are a number of
+features that make it simpler, more efficient and more concise then
+the previous standard.
+
+## `auto` keyword
+
+Great for simplifying code where you need to refer to a complex type.
+
+```
+auto start = steady_clock::now();
+```
+
+## Range-for
+
+Makes loops that access each element in a container simpler to write
+than the old three-part for, especially used together with `auto`.
+
+```
+for (auto &it : get_registry())
+```
+
+## Lambda functions
+
+STL algorithms are now much quicker and easier to use than the old
+bind based methods.
+
+```
+// Find solution name match by substring
+auto it = find_if(begin(all_solutions), end(all_solutions),
+                  [&solution_name](const EulerSolution &arg)
+                  {
+                      return arg.get_solution_name().find(solution_name)
+                             != std::string::npos;
+                  });
+```
+
+## Uniform initialisation
+
+Allows the compiler to check that the arguments used to initialise a
+type are correct and to pass temporaries without having to name the
+class used.
+
+```
+EulerRegistry::register_solution({1, "brute_force", brute_force, 1000});
+```
+
+## Control of defaults
+
+Rathen than moving a copy constructor into the private section of a
+class to inidicate that you don't want copying to be performed, you
+can now mark it as deleted. Similary you can show that you want the
+default version of a constructor/destructor to be used.
+
+```
+~EulerSolution() = default;
+EulerSolution(const EulerSolution &) = delete;
+```
+
+## Explict constructors
+
+Show the compiler that a constructor should not be called unless we
+explicity ask for a conversion to that particular type.
+
+```
+explicit EulerRunner(const EulerSolution &solution ...
+```
+
+## `long long`
+
+An int value that is  guaranteed to be at least 64 bits.
+
+## Raw string literals
+
+Makes it easier to construct multi-line strings or strings with quote
+characters in.
+
+```
+static string usage = R"(
+euler [--problem PROBLEM_NUMBER] [--solution SOLUTION_NAME]
+      [--runs NUMBER_OF_RUNS] [--input N[,N1,N2...]] [--csv] [--help]
+)";
+```
+
+## Function objects
+
+The C++ way to do function pointers - more flexible than C function
+pointers as you can used class member functions and a cleaner syntax.
+
+```
+std::function<EulerIntType(EulerIntType)>
+```
+
+## Type aliases
+
+A cleaner way than using typedef to refer to complex types.
+
+```
+using EulerFunction = std::function<EulerIntType(EulerIntType)>;
+```
+
+## Time and duration classes in the STL
+
+Allows standardised access to sub-millisecond clocks and easy ways to
+transform the units for durations.
+
+```
+auto start = steady_clock::now();
+// ...
+auto end = steady_clock::now();
+
+auto duration = duration_cast<std::chrono::nanoseconds>(end - start).count();
+```
+
+# Author
+
+Rupert Lane <rupert@rupert-lane.org>
+
+# Copyright and License
+
+This software is copyright (c) 2013 by Rupert Lane.
+
+This is free software, released under the GNU General Public License
+version 3 (or later). See LICENSE for full details.
